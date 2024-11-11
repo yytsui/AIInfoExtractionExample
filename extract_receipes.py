@@ -1,19 +1,20 @@
 import json
 import os
-import time
+from logging import warning
+from typing import Dict
+from string import Template
 
 import PyPDF2
 from dotenv import load_dotenv
 from openai import OpenAI
-import openai
+from loguru import logger
 
 load_dotenv()
 # Set your OpenAI API Key
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-openai.api_key = os.getenv("OPENAI_API_KEY")
 FILE_PATH = "data/originalrecipeso00orde.pdf"
-INSTRUCTION =  f"""
-    Extract all recipes from the following text starting from ---Page 11---. Each recipe should include:
+prompt_template =  Template("""
+    Extract all recipes from the following text starting from ---Page $page_number---. Each recipe should include:
     - Recipe name
     - Ingredients (with item, quantity, and unit)
     - Instructions (use the original text as much as possible)
@@ -24,7 +25,7 @@ INSTRUCTION =  f"""
 
     {{
         "recipe": "Recipe Name",
-        "page": 12,
+        "page": {page_number},
         "author": "Author Name",
         "ingredients": [
             {{"item": "ingredient 1", "quantity": 2, "unit": "cups"}},
@@ -36,69 +37,18 @@ INSTRUCTION =  f"""
             "Step 3"
         ]
     }}.
-    Not every page will have a recipe, so you may need to skip some pages.
-    """ 
-
-def upload_pdf(file_path):
-    """
-    Upload a PDF file to OpenAI's API.
-    """
-    print(f"Uploading file: {file_path}")
-    with open(file_path, 'rb') as f:
-        response = openai_client.files.create(
-            file=f,
-            purpose='assistants'
-        )
-    print(f"File uploaded successfully with ID: {response}")
-    return response
-
-def extract_text_from_pdf(file_id):
-    """
-    Extract text from the uploaded PDF using OpenAI's GPT-4 model.
-    """
-    print("Extracting text using GPT-4...")
-    prompt = f"""
-    Extract all recipes from the uploaded PDF file. Each recipe should include:
-    - Recipe name
-    - Ingredients (with item, quantity, and unit)
-    - Instructions (use the original text as much as possible)
-    - Author
-    - Page number
-
-    Format each recipe in JSON format like this:
-
+    There could be multiple recipes in a page, return a list of recipes in the page.
+    Not every page will have a recipe, in case there is no recipes in the page, return a json like this 
     {{
-        "recipe": "Recipe Name",
-        "page": 12,
-        "author": "Author Name",
-        "ingredients": [
-            {{"item": "ingredient 1", "quantity": 2, "unit": "cups"}},
-            {{"item": "ingredient 2", "quantity": 1, "unit": "tablespoon"}}
-        ],
-        "instructions": [
-            "Step 1",
-            "Step 2",
-            "Step 3"
-        ]
+       "warning": "no recipe in this page",
+        "page": $page_number
     }}
-    """
+    
+    ---Page $page_number---
+    $text
+    """)
+SYSTEM_CONTENT = "You are a helpful information extraction assistant. You will extract recipes from a book."
 
-    # Use GPT-4 model to extract structured data
-    try:
-        assistant = openai_client.beta.assistants.create(
-            model="gpt-4o",
-            #messages=[
-            #    {"role": "system", "content": "You are a helpful assistant for extracting recipes."},
-            #    {"role": "user", "content": prompt}
-            #],
-            temperature=0.0
-        )
-        response = assistant.append_message(prompt).create_message().result
-
-        return response['choices'][0]['message']['content']
-    except Exception as e:
-        print(f"Error extracting text: {e}")
-        return None
 
 def save_recipes_to_json(recipes_text, output_file):
     """
@@ -112,112 +62,59 @@ def save_recipes_to_json(recipes_text, output_file):
     except json.JSONDecodeError as e:
         print(f"Error decoding JSON: {e}")
 
-def main():
-    file_path = 'data/originalrecipeso00orde.pdf'  # Update with your file path
 
-    # Step 1: Upload the PDF file
-    file_id = upload_pdf(file_path)
 
-    # Step 2: Give some time for the file to be processed
-    time.sleep(5)
-
-    # Step 3: Extract recipes using GPT-4
-    recipes_text = extract_text_from_pdf(None)
-
-    if recipes_text:
-        # Step 4: Save extracted recipes to a JSON file
-        output_file = 'recipes.json'
-        save_recipes_to_json(recipes_text, output_file)
-
-def run():
-    client = openai_client
-    prompt = f"""
-       Extract all recipes from the uploaded PDF file. Each recipe should include:
-       - Recipe name
-       - Ingredients (with item, quantity, and unit)
-       - Instructions (use the original text as much as possible)
-       - Author
-       - Page number
-
-       Format each recipe in JSON format like this:
-
-       {{
-           "recipe": "Recipe Name",
-           "page": 12,
-           "author": "Author Name",
-           "ingredients": [
-               {{"item": "ingredient 1", "quantity": 2, "unit": "cups"}},
-               {{"item": "ingredient 2", "quantity": 1, "unit": "tablespoon"}}
-           ],
-           "instructions": [
-               "Step 1",
-               "Step 2",
-               "Step 3"
-           ]
-       }}
-       """
-    assistant = client.beta.assistants.create(
-        name="Analyst Assistant",
-        instructions="You are an helpful assistant for extracting cooking recipes from a book.",
-        model="gpt-4o",
-        tools=[{"type": "file_search"}],
-    )
-
-    message_file = client.files.create(file=open("data/originalrecipeso00orde.pdf", "rb"), purpose="assistants")
-    thread = client.beta.threads.create(
-        messages=[
-            {
-                "role": "user",
-                "content": prompt,
-                "attachments": [{"file_id": message_file.id, "tools": [{"type": "file_search"}]}],
-            }
-        ]
-    )
-
-    #run = client.beta.threads.runs.create_and_poll(thread_id=thread.id, assistant_id=assistant.id)
-    #messages = list(client.beta.threads.messages.list(thread_id=thread.id, run_id=run.id))
-    #print(messages[0].content[0].text.value)
-
-def ask_ai(prompt):
+def ask_ai(prompt, system_content=SYSTEM_CONTENT):
 
     response = openai_client.chat.completions.create(
         model="gpt-4o",
+        temperature=0,
         messages=[
             {"role": "system",
-             "content": "You are a helpful information extraction assistant. You will extract recipes from a book."},
+             "content": system_content},
             {"role": "user", "content": prompt}
         ]
     )
     content = response.choices[0].message.content
     return content
 
-def read_pdf(pdf_path: str, start_page: int, end_page: int) -> str:
+def read_pdf(pdf_path: str) -> Dict:
     """Extract text from PDF file."""
-    text = ""
+    page_text = {}
     try:
         with open(pdf_path, 'rb') as file:
             pdf_reader = PyPDF2.PdfReader(file)
             for i, page in enumerate(pdf_reader.pages):
-                n = i + 1
-                if n < start_page or n > end_page:
-                    continue
-                page_message = f"---Page {n}---\n"
-                text += page_message
-                text += page.extract_text() + "\n"
-        return text
+                page_text[i+1] = page.extract_text()
     except Exception as e:
-        print(f"Error reading PDF: {e}")
-        return ""
+        logger.error(f"Error reading PDF: {e}")
+        page_text = {"error": f"Error reading PDF: {e}"}
+    return page_text
 
-def run2():
-    content = read_pdf(FILE_PATH, 11,175)
+def run():
+    content = read_pdf(FILE_PATH)
+    results = []
+    warnings = []
+    for page_number, text in content.items():
+        prompt = prompt_template.substitute(page_number=page_number,text=text)
+        logger.info(prompt)
+        text_response = ask_ai(prompt)
+        response = text_response.split("```json")[1].split("```")[0]
+        logger.info(response)
+
+        result = json.loads(response)
+        if "warning" in result:
+            logger.warning(result)
+            warnings.append(result)
+        else:
+            logger.info(result)
+            logger.info(f"Extracted {len(result)} recipes from page {page_number}")
+            results += result
     #print(content)
     #print(len(content))
-    prompt = f"""{INSTRUCTION}\n\n{content}"""
-    print(prompt)
-    response = ask_ai(prompt)
-    print(response)
     with open("recipes.json", "w") as f:
-        f.write(response)
+        json.dump(results, f, indent=4)
+    with open("warnings.json", "w") as f:
+        json.dump(warnings, f, indent=4)
 if __name__ == "__main__":
-    run2()
+    run()
