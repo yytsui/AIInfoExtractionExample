@@ -1,13 +1,11 @@
 import json
 import os
-from logging import warning
-from typing import Dict
 from string import Template
 
-import PyPDF2
 from dotenv import load_dotenv
 from openai import OpenAI
 from loguru import logger
+from pdf_text import read_pdf
 
 load_dotenv()
 # Set your OpenAI API Key
@@ -50,20 +48,6 @@ prompt_template =  Template("""
 SYSTEM_CONTENT = "You are a helpful information extraction assistant. You will extract recipes from a book."
 
 
-def save_recipes_to_json(recipes_text, output_file):
-    """
-    Save extracted recipes to a JSON file.
-    """
-    try:
-        recipes = json.loads(recipes_text)
-        with open(output_file, 'w') as f:
-            json.dump(recipes, f, indent=4)
-        print(f"Recipes have been saved to {output_file}")
-    except json.JSONDecodeError as e:
-        print(f"Error decoding JSON: {e}")
-
-
-
 def ask_ai(prompt, system_content=SYSTEM_CONTENT):
 
     response = openai_client.chat.completions.create(
@@ -78,18 +62,6 @@ def ask_ai(prompt, system_content=SYSTEM_CONTENT):
     content = response.choices[0].message.content
     return content
 
-def read_pdf(pdf_path: str) -> Dict:
-    """Extract text from PDF file."""
-    page_text = {}
-    try:
-        with open(pdf_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            for i, page in enumerate(pdf_reader.pages):
-                page_text[i+1] = page.extract_text()
-    except Exception as e:
-        logger.error(f"Error reading PDF: {e}")
-        page_text = {"error": f"Error reading PDF: {e}"}
-    return page_text
 
 def run():
     content = read_pdf(FILE_PATH)
