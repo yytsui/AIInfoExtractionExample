@@ -6,10 +6,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from loguru import logger
 from pdf_text import read_pdf
+from ai import ask_ai
 
-load_dotenv()
-# Set your OpenAI API Key
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 FILE_PATH = "data/originalrecipeso00orde.pdf"
 prompt_template =  Template("""
     Extract all recipes from the following text starting from ---Page $page_number---. Each recipe should include:
@@ -48,19 +46,6 @@ prompt_template =  Template("""
 SYSTEM_CONTENT = "You are a helpful information extraction assistant. You will extract recipes from a book."
 
 
-def ask_ai(prompt, system_content=SYSTEM_CONTENT):
-
-    response = openai_client.chat.completions.create(
-        model="gpt-4o",
-        temperature=0,
-        messages=[
-            {"role": "system",
-             "content": system_content},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    content = response.choices[0].message.content
-    return content
 
 
 def run():
@@ -70,7 +55,7 @@ def run():
     for page_number, text in content.items():
         prompt = prompt_template.substitute(page_number=page_number,text=text)
         logger.info(prompt)
-        text_response = ask_ai(prompt)
+        text_response = ask_ai(prompt, system_content=SYSTEM_CONTENT, temperature=0)
         response = text_response.split("```json")[1].split("```")[0]
         logger.info(response)
 
