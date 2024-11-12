@@ -1,32 +1,30 @@
 import json
-
-from loguru import logger
+import os
 
 from dotenv import load_dotenv
-import os
-from openai import OpenAI
 from icecream import ic
-from model import CookBook, Recipe
-from pdf_text import read_pdf
 from loguru import logger
+from openai import OpenAI
+
+from model import CookBook
+from pdf_text import read_pdf
+from settings import FILE_PATH, SYSTEM_CONTENT, DEBUG, STRUCTURED_RECIPES_FILEPATH, \
+    STRUCTURED_NO_RECIPES_WARNINGS_FILEPATH
+from utils import dump_json
 
 load_dotenv()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-FILE_PATH = "data/originalrecipeso00orde.pdf"
-SYSTEM_CONTENT = "You are a helpful information extraction assistant. You will extract recipes from a book."
 
 def find_structured_info_with_ai(prompt, system_content, response_format):
     completion = openai_client.beta.chat.completions.parse(
         model="gpt-4o-2024-08-06",
         messages=[
             {"role": "system",
-             #"content": "You are a helpful information extraction assistant. You will extract recipes from a book."
              "content": system_content
             },
             {
                 "role": "user",
-                #"content": f"find the agreement title, date, entity which has the agreement with Novus and subject property in this agreement : {agreement.content_text}",
                 "content": prompt
             },
         ],
@@ -45,7 +43,7 @@ def generate_prompt(page_number, text):
             f"Each recipe should include: - title - Ingredients (with item, quantity, and unit) - "
             f"Instructions (use the original text as much as possible) - Author - Page number\n" 
             f" There could be multiple recipes in a page, return a list of recipes in the page. "
-            f" Not every page will have a recipe\n" 
+            f"There are pages without any recipe.\n" 
             f"---Page {page_number}--\n{text}")
 
 def main():
@@ -64,15 +62,15 @@ def main():
             logger.warning(d)
             no_recipes_warnings.append(d)
 
-        if len(recipes) > 5:
+        if DEBUG and len(recipes) > 5:
             ic(recipes)
             logger.info("here")
             break
+    logger.info(f"extraction done.number of recipes found: {len(recipes)}, ready to persist to file.")
     recipes_dict = [recipe.model_dump() for recipe in recipes]
-    with open("gen_results/structed_recipes.json", "w", encoding="utf-8") as f:
-        json.dump(recipes_dict, f, indent=4)
-    with open("gen_results/no_recipes_warnings.json", "w", encoding="utf-8") as f:
-        json.dump(no_recipes_warnings, f, indent=4)
+
+    dump_json(recipes_dict, STRUCTURED_RECIPES_FILEPATH)
+    dump_json(no_recipes_warnings, STRUCTURED_NO_RECIPES_WARNINGS_FILEPATH)
 
 
 
