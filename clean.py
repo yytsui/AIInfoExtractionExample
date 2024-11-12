@@ -1,4 +1,4 @@
-from settings import STRUCTURED_RECIPES_FILEPATH, OK_STRUCTURED_RECIPES_FILEPATH
+from settings import STRUCTURED_RECIPES_FILEPATH, ID_STRUCTURED_RECIPES_FILEPATH,  OK_STRUCTURED_RECIPES_FILEPATH
 import json
 from loguru import logger
 from typing import Dict
@@ -21,8 +21,16 @@ def validate():
             if is_missing_fields(d):
                 logger.warning(f"Validation failed for {d}")
 
-def select_ok_recipes(input_file, output_file):
+def add_id():
     with open(STRUCTURED_RECIPES_FILEPATH, "r") as f:
+        data = json.load(f)
+        for i, d in enumerate(data):
+            d["id"] = i
+        with open(ID_STRUCTURED_RECIPES_FILEPATH, "w") as f:
+            json.dump(data, f, indent=4)
+
+def select_ok_recipes(input_file, output_file):
+    with open(input_file, "r") as f:
         data = json.load(f)
         ok_recipes =  [d for d in data if not is_missing_fields(d)]
         logger.info(f"Number of recipes: {len(data)}")
@@ -34,4 +42,5 @@ def select_ok_recipes(input_file, output_file):
             json.dump(ok_recipes, f, indent=4)
 
 if __name__ == "__main__":
-    select_ok_recipes(STRUCTURED_RECIPES_FILEPATH, OK_STRUCTURED_RECIPES_FILEPATH)
+    add_id()
+    select_ok_recipes(ID_STRUCTURED_RECIPES_FILEPATH, OK_STRUCTURED_RECIPES_FILEPATH)
