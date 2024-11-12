@@ -14,7 +14,7 @@ def load_all_recipes(json_file=OK_STRUCTURED_RECIPES_FILEPATH) -> List[Recipe]:
     return recipes
 
 def fetch_recipe_samples(size=10, min_ingredients=5, min_steps=4) -> List[Recipe]:
-    random.seed(42)
+    random.seed(1)
     recipes = load_all_recipes()
     recipes = [r for r in recipes if min_ingredients <= r.number_of_ingredients and
                min_steps <= r.number_of_steps]
@@ -22,9 +22,11 @@ def fetch_recipe_samples(size=10, min_ingredients=5, min_steps=4) -> List[Recipe
     return random.sample(recipes, size)
 
 def main():
-    recipes = load_all_recipes()
-    logger.info(f"Number of total recipes: {len(recipes)}")
-    samples = fetch_recipe_samples(3)
+    #recipes = load_all_recipes()
+    #logger.info(f"Number of total recipes: {len(recipes)}")
+    samples = fetch_recipe_samples(5)
+    ic(samples)
+    return
     for r in samples:
         logger.info(r.text)
         logger.info("-" * 80)

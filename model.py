@@ -22,6 +22,7 @@ class Ingredient(BaseModel):
         return f"{self.item} {self.quantity} {self.unit}"
 
 class Recipe(BaseModel):
+    id: int
     title: Optional[str] = None
     page: Optional[int] = None
     author: Optional[str] = None
@@ -55,6 +56,13 @@ class Recipe(BaseModel):
     @property
     def text(self):
         return f"{self.title}\n\ningredients:\n{self.ingredients_text}\n\nsteps:\n{self.steps_text}"
+
+    @property
+    def main_image_filename(self):
+        return f"main_{self.id}.png"
+
+    def get_step_image_filename(self, n):
+        return f"r{self.id}_s{n}.png"
 
 
 class CookBook(BaseModel):

@@ -11,3 +11,4 @@ ID_STRUCTURED_RECIPES_FILEPATH = "gen_results/id_structured_recipes.json"
 OK_STRUCTURED_RECIPES_FILEPATH = "gen_results/ok_structured_recipes.json"
 
 CH_RECIPES_FILEPATH = "gen_results/ch_recipes.json"
+IMAGE_STORAGE_PATH = "gen_images/"
