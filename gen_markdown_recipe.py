@@ -22,7 +22,7 @@ def generate_recipe_markdown(recipe: Recipe) -> str:
     markdown = f"# {recipe.title}\n\n"
 
     # Add main image if available with width 800px
-    main_image = f"/assets/image/{recipe.main_image_filename}"
+    main_image = f"/notes/assets/image/{recipe.main_image_filename}"
     markdown += f"<img src='{main_image}' width='800px'/>\n\n"
 
     # Add ingredients section with table
@@ -34,14 +34,15 @@ def generate_recipe_markdown(recipe: Recipe) -> str:
     markdown += "## Instructions\n\n"
     for i, step in enumerate(recipe.instructions):
         markdown += f"{i+1}. {step}\n"
-        step_image = f"/assets/image/{recipe.get_step_image_filename(i)}"
-        markdown += f"\n<img src='{step_image}' width='400px'/>\n\n"
+        step_image = f"/notes/assets/image/{recipe.get_step_image_filename(i)}"
+        markdown += f"\n\t<img src='{step_image}' width='400px'/>\n\n"
 
     # Add footer with author and page
     markdown += "\n---\n"
     if recipe.author:
         markdown += f"*Recipe by: {recipe.author}*"
     if recipe.page:
+        markdown += "\n\n"
         markdown += f" • *Source: [Original Recipes of Good Things to Eat](https://ia601303.us.archive.org/34/items/originalrecipeso00orde/originalrecipeso00orde.pdf) page {recipe.page}*"
 
     return markdown
