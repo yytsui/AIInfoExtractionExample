@@ -1,6 +1,8 @@
 from typing import Dict
+
 import PyPDF2
 from loguru import logger
+
 
 def read_pdf(pdf_path: str) -> Dict:
     """Extract text from PDF file."""

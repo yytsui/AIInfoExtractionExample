@@ -1,12 +1,10 @@
 import json
-import os
 from string import Template
 
-from dotenv import load_dotenv
-from openai import OpenAI
 from loguru import logger
-from pdf_text import read_pdf
+
 from ai import ask_ai
+from pdf_text import read_pdf
 
 FILE_PATH = "data/originalrecipeso00orde.pdf"
 prompt_template =  Template("""

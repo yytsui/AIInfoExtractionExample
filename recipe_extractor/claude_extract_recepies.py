@@ -1,6 +1,5 @@
 import anthropic
 import base64
-import httpx
 import os
 from dotenv import load_dotenv
 
